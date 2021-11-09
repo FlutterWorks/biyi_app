@@ -1,7 +1,10 @@
+import 'dart:io';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:package_info_plus/package_info_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:window_manager/window_manager.dart';
 
 import '../../../includes.dart';
 
@@ -15,7 +18,6 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
-  PackageInfo _packageInfo;
   String _inputSetting = kInputSettingSubmitWithEnter;
 
   String t(String key, {List<String> args}) {
@@ -29,10 +31,7 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   void _init() async {
-    final PackageInfo info = await PackageInfo.fromPlatform();
-
     setState(() {
-      _packageInfo = info;
       _inputSetting = sharedConfig.inputSetting;
     });
   }
@@ -45,6 +44,16 @@ class _SettingsPageState extends State<SettingsPage> {
             title: Text(t('pref_section_title_general')),
             children: [
               PreferenceListItem(
+                title: Text(t('pref_item_title_extract_text')),
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => SettingExtractTextPage(),
+                    ),
+                  );
+                },
+              ),
+              PreferenceListItem(
                 title: Text(t('pref_item_title_translate')),
                 onTap: () {
                   Navigator.of(context).push(
@@ -54,21 +63,21 @@ class _SettingsPageState extends State<SettingsPage> {
                   );
                 },
               ),
-              PreferenceListItem(
-                title: Text(t('pref_item_title_screen_extract_text')),
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => SettingScreenExtractTextPage(),
-                    ),
-                  );
-                },
-              ),
             ],
           ),
           PreferenceListSection(
             title: Text(t('pref_section_title_appearance')),
             children: [
+              PreferenceListItem(
+                title: Text(t('pref_item_title_interface')),
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => SettingInterfacePage(),
+                    ),
+                  );
+                },
+              ),
               PreferenceListItem(
                 title: Text(t('pref_item_title_app_language')),
                 detailText: Text(getLanguageName(sharedConfig.appLanguage)),
@@ -85,7 +94,7 @@ class _SettingsPageState extends State<SettingsPage> {
               PreferenceListItem(
                 title: Text(t('pref_item_title_theme_mode')),
                 detailText: Text(
-                  'theme_mode.${describeEnum(ThemeMode.light)}'.tr(),
+                  'theme_mode.${describeEnum(sharedConfig.themeMode)}'.tr(),
                 ),
                 onTap: () {
                   Navigator.of(context).push(
@@ -128,7 +137,9 @@ class _SettingsPageState extends State<SettingsPage> {
               PreferenceListRadioItem(
                 value: kInputSettingSubmitWithMetaEnter,
                 groupValue: _inputSetting,
-                title: Text(t('pref_item_title_submit_with_meta_enter')),
+                title: Text(t(kIsMacOS
+                    ? 'pref_item_title_submit_with_meta_enter_mac'
+                    : 'pref_item_title_submit_with_meta_enter')),
                 onChanged: (newValue) {
                   _inputSetting = newValue;
                   sharedConfigManager.setInputSetting(newValue);
@@ -189,6 +200,69 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
             ],
           ),
+          PreferenceListSection(
+            title: Text(t('pref_section_title_others')),
+            children: [
+              PreferenceListItem(
+                title: Text(t('pref_item_title_sponsor')),
+                onTap: () async {
+                  String url = '${sharedEnv.webUrl}/sponsor';
+                  if (await canLaunch(url)) {
+                    await launch(url);
+                  }
+                },
+              ),
+              PreferenceListItem(
+                title: Text(t('pref_item_title_about')),
+                onTap: () async {
+                  String url = 'https://github.com/biyidev/biyi_app';
+                  if (await canLaunch(url)) {
+                    await launch(url);
+                  }
+                },
+              ),
+            ],
+          ),
+          PreferenceListSection(
+            children: [
+              PreferenceListItem(
+                title: Container(
+                  width: double.infinity,
+                  child: Text(
+                    t('pref_item_title_exit_app'),
+                    style: TextStyle(color: Colors.red),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+                accessoryView: Container(),
+                onTap: () async {
+                  return showDialog<void>(
+                    context: context,
+                    builder: (BuildContext ctx) {
+                      return CustomAlertDialog(
+                        title: Text(t('exit_app_dialog.title')),
+                        actions: <Widget>[
+                          CustomDialogAction(
+                            child: Text('cancel'.tr()),
+                            onPressed: () async {
+                              Navigator.of(ctx).pop();
+                            },
+                          ),
+                          CustomDialogAction(
+                            child: Text('ok'.tr()),
+                            onPressed: () async {
+                              await trayManager.destroy();
+                              exit(0);
+                            },
+                          ),
+                        ],
+                      );
+                    },
+                  );
+                },
+              ),
+            ],
+          ),
           Column(
             children: [
               Padding(
@@ -198,8 +272,8 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
                 child: Text(
                   t('text_version', args: [
-                    _packageInfo?.version ?? '',
-                    _packageInfo?.buildNumber?.toString() ?? '',
+                    sharedEnv.appVersion,
+                    '${sharedEnv.appBuildNumber}',
                   ]),
                   style: Theme.of(context).textTheme.caption,
                 ),

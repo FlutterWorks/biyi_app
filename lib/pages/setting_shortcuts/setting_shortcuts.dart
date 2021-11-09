@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:hotkey_manager/hotkey_manager.dart';
 
 import '../../../includes.dart';
 
@@ -17,6 +18,7 @@ class _SettingShortcutsPageState extends State<SettingShortcutsPage> {
 
   @override
   void initState() {
+    ShortcutService.instance.stop();
     sharedConfigManager.addListener(_configListen);
 
     super.initState();
@@ -24,6 +26,7 @@ class _SettingShortcutsPageState extends State<SettingShortcutsPage> {
 
   @override
   void dispose() {
+    ShortcutService.instance.start();
     sharedConfigManager.removeListener(_configListen);
     super.dispose();
   }
@@ -31,6 +34,22 @@ class _SettingShortcutsPageState extends State<SettingShortcutsPage> {
   void _configListen() {
     _config = sharedConfigManager.getConfig();
     setState(() {});
+  }
+
+  Future<void> _handleClickRegisterNewHotKey(
+    BuildContext context, {
+    String shortcutKey,
+  }) async {
+    return showDialog<void>(
+      context: context,
+      builder: (BuildContext ctx) {
+        return RecordHotKeyDialog(
+          onHotKeyRecorded: (newHotKey) {
+            sharedConfigManager.setShortcut(shortcutKey, newHotKey);
+          },
+        );
+      },
+    );
   }
 
   Widget _buildBody(BuildContext context) {
@@ -41,29 +60,57 @@ class _SettingShortcutsPageState extends State<SettingShortcutsPage> {
             children: [
               PreferenceListItem(
                 title: Text(t('pref_item_title_show_or_hide')),
-                detailText: Text(
-                  _config.shortcutShowOrHide.toString(),
+                detailText: HotKeyVirtualView(
+                  hotKey: _config.shortcutShowOrHide,
                 ),
-                onTap: () {},
+                onTap: () {
+                  _handleClickRegisterNewHotKey(
+                    context,
+                    shortcutKey: kShortcutShowOrHide,
+                  );
+                },
               ),
             ],
           ),
           PreferenceListSection(
-            title: Text(t('pref_section_title_screen_extract_text')),
+            title: Text(t('pref_section_title_extract_text')),
             children: [
               PreferenceListItem(
                 title: Text(t('pref_item_title_extract_text_from_selection')),
-                detailText: Text(
-                  _config.shortcutExtractFromScreenSelection.toString(),
+                detailText: HotKeyVirtualView(
+                  hotKey: _config.shortcutExtractFromScreenSelection,
                 ),
-                onTap: () {},
+                onTap: () {
+                  _handleClickRegisterNewHotKey(
+                    context,
+                    shortcutKey: kShortcutExtractFromScreenSelection,
+                  );
+                },
               ),
-              PreferenceListItem(
-                title: Text(t('pref_item_title_extract_text_from_capture')),
-                detailText: Text(
-                  _config.shortcutExtractFromScreenCapture.toString(),
+              if (!kIsLinux)
+                PreferenceListItem(
+                  title: Text(t('pref_item_title_extract_text_from_capture')),
+                  detailText: HotKeyVirtualView(
+                    hotKey: _config.shortcutExtractFromScreenCapture,
+                  ),
+                  onTap: () {
+                    _handleClickRegisterNewHotKey(
+                      context,
+                      shortcutKey: kShortcutExtractFromScreenCapture,
+                    );
+                  },
                 ),
-                onTap: () {},
+              PreferenceListItem(
+                title: Text(t('pref_item_title_extract_text_from_clipboard')),
+                detailText: HotKeyVirtualView(
+                  hotKey: _config.shortcutExtractFromClipboard,
+                ),
+                onTap: () {
+                  _handleClickRegisterNewHotKey(
+                    context,
+                    shortcutKey: kShortcutExtractFromClipboard,
+                  );
+                },
               ),
             ],
           ),

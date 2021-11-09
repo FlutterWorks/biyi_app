@@ -1,12 +1,19 @@
 import 'dart:collection';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:hotkey_manager/hotkey_manager.dart';
-import 'package:path_provider/path_provider.dart';
 
 import '../includes.dart';
+
+const kShortcutShowOrHide = 'shortcut_show_or_hide';
+const kShortcutExtractFromScreenSelection =
+    'shortcut_extract_from_screen_selection';
+const kShortcutExtractFromScreenCapture =
+    'shortcut_extract_from_screen_capture';
+const kShortcutExtractFromClipboard = 'shortcut_extract_from_clipboard';
 
 Future<void> initConfig() async {
   await ConfigManager.instance.reload();
@@ -89,36 +96,33 @@ class Config {
   static final Config instance = Config._();
 
   Future<Directory> getAppDirectory() async {
-    final docDir = await getApplicationDocumentsDirectory();
-    final appDir = Directory('${docDir.parent.path}/biyiapp');
-    if (!appDir.existsSync()) {
-      appDir.createSync(recursive: true);
-    }
-    return appDir;
+    return proAccount.dataDirectory;
   }
 
   String translationMode;
   String defaultEngineId;
   String defaultOcrEngineId;
+  bool showTrayIcon;
+  String trayIconStyle;
+  double maxWindowHeight;
   String appLanguage;
   ThemeMode themeMode;
   String inputSetting;
-  HotKey shortcutShowOrHide = HotKey(
-    KeyCode.tab,
-    modifiers: [KeyModifier.alt],
-  );
-  HotKey shortcutExtractFromScreenSelection = HotKey(
-    KeyCode.keyQ,
-    modifiers: [KeyModifier.alt],
-  );
-  HotKey shortcutExtractFromScreenCapture = HotKey(
-    KeyCode.keyW,
-    modifiers: [KeyModifier.alt],
-  );
+  HotKey shortcutShowOrHide;
+  HotKey shortcutExtractFromScreenSelection;
+  HotKey shortcutExtractFromScreenCapture;
+  HotKey shortcutExtractFromClipboard;
   HotKey get shortcutInputSettingSubmitWithMetaEnter {
+    if (kIsMacOS) {
+      return HotKey(
+        KeyCode.enter,
+        modifiers: [KeyModifier.meta],
+        scope: HotKeyScope.inapp,
+      );
+    }
     return HotKey(
       KeyCode.enter,
-      modifiers: [KeyModifier.meta],
+      modifiers: [KeyModifier.control],
       scope: HotKeyScope.inapp,
     );
   }
@@ -143,6 +147,18 @@ class ConfigManager extends _ConfigChangeNotifier {
     Config.instance.defaultOcrEngineId = await _getString(
       kPrefDefaultOcrEngineId,
     );
+    Config.instance.showTrayIcon = await _getBool(
+      kPrefShowTrayIcon,
+      defaultValue: true,
+    );
+    Config.instance.trayIconStyle = await _getString(
+      kPrefTrayIconStyle,
+      defaultValue: kIsWindows ? kTrayIconStyleBlack : kTrayIconStyleWhite,
+    );
+    Config.instance.maxWindowHeight = double.parse(await _getString(
+      kPrefMaxWindowHeight,
+      defaultValue: '600',
+    ));
     Config.instance.appLanguage = await _getString(
       kPrefAppLanguage,
       defaultValue: kLanguageZH,
@@ -155,6 +171,38 @@ class ConfigManager extends _ConfigChangeNotifier {
     Config.instance.inputSetting = await _getString(
       kPrefInputSetting,
       defaultValue: kInputSettingSubmitWithEnter,
+    );
+    Config.instance.shortcutShowOrHide = await getShortcut(
+      kShortcutShowOrHide,
+      defaultValue: HotKey(
+        KeyCode.digit1,
+        modifiers: [KeyModifier.alt],
+        identifier: kShortcutShowOrHide,
+      ),
+    );
+    Config.instance.shortcutExtractFromScreenSelection = await getShortcut(
+      kShortcutExtractFromScreenSelection,
+      defaultValue: HotKey(
+        KeyCode.keyQ,
+        modifiers: [KeyModifier.alt],
+        identifier: kShortcutExtractFromScreenSelection,
+      ),
+    );
+    Config.instance.shortcutExtractFromScreenCapture = await getShortcut(
+      kShortcutExtractFromScreenCapture,
+      defaultValue: HotKey(
+        KeyCode.keyW,
+        modifiers: [KeyModifier.alt],
+        identifier: kShortcutExtractFromScreenCapture,
+      ),
+    );
+    Config.instance.shortcutExtractFromClipboard = await getShortcut(
+      kShortcutExtractFromClipboard,
+      defaultValue: HotKey(
+        KeyCode.keyE,
+        modifiers: [KeyModifier.alt],
+        identifier: kShortcutExtractFromClipboard,
+      ),
     );
   }
 
@@ -170,6 +218,18 @@ class ConfigManager extends _ConfigChangeNotifier {
     return _setString(kPrefDefaultOcrEngineId, value);
   }
 
+  Future<void> setShowTrayIcon(bool value) {
+    return _setBool(kPrefShowTrayIcon, value);
+  }
+
+  Future<void> setTrayIconStyle(String value) {
+    return _setString(kPrefTrayIconStyle, value);
+  }
+
+  Future<void> setMaxWindowHeight(double value) {
+    return _setString(kPrefMaxWindowHeight, value.toString());
+  }
+
   Future<void> setAppLanguage(String value) {
     return _setString(kPrefAppLanguage, value);
   }
@@ -180,6 +240,22 @@ class ConfigManager extends _ConfigChangeNotifier {
 
   Future<void> setInputSetting(String value) {
     return _setString(kPrefInputSetting, value);
+  }
+
+  Future<void> setShortcut(String key, HotKey hotKey) async {
+    return _setString(
+      key,
+      json.encode(hotKey.toJson()),
+    );
+  }
+
+  Future<HotKey> getShortcut(String key, {HotKey defaultValue}) async {
+    HotKey hotKey;
+    String jsonString = await _getString(key);
+    if (jsonString != null && jsonString.isNotEmpty) {
+      hotKey = HotKey.fromJson(json.decode(jsonString));
+    }
+    return hotKey ?? defaultValue;
   }
 
   Future<void> _setString(String key, String value) async {
@@ -204,9 +280,16 @@ class ConfigManager extends _ConfigChangeNotifier {
   Future<void> _setBool(String key, bool value) async {
     UserPreference pref = sharedLocalDb.preference(key).get();
     if (pref == null) {
-      sharedLocalDb.preferences.create(key: key, value: '$value');
+      sharedLocalDb.preferences.create(
+        key: key,
+        type: kPreferenceTypeBool,
+        value: '$value',
+      );
     } else {
-      sharedLocalDb.preference(key).update(value: '$value');
+      sharedLocalDb.preference(key).update(
+            type: kPreferenceTypeBool,
+            value: '$value',
+          );
     }
 
     sharedLocalDb.write();

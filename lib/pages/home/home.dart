@@ -7,7 +7,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-import 'package:package_info_plus/package_info_plus.dart';
+import 'package:screen_retriever/screen_retriever.dart';
 import 'package:screen_text_extractor/screen_text_extractor.dart';
 import 'package:tray_manager/tray_manager.dart';
 import 'package:uuid/uuid.dart';
@@ -19,13 +19,12 @@ export './limited_functionality_banner.dart';
 export './new_version_found_banner.dart';
 import './toolbar_item_always_on_top.dart';
 import './toolbar_item_settings.dart';
-import './toolbar_item_sponsor.dart';
 import './translation_input_view.dart';
 import './translation_results_view.dart';
 import './translation_target_select_view.dart';
 
-const kMenuItemIdShowOrHideMainWindow = 'show-or-hide-main-window';
-const kMenuItemIdExitApp = 'exit-app';
+const kMenuItemKeyShow = 'show';
+const kMenuItemKeyExitApp = 'exit-app';
 
 class HomePage extends StatefulWidget {
   @override
@@ -33,7 +32,7 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage>
-    with TrayListener, WindowListener, UriSchemeListener {
+    with TrayListener, WindowListener, ShortcutListener, UriSchemeListener {
   FocusNode _focusNode = FocusNode();
   TextEditingController _textEditingController = TextEditingController();
   ScrollController _scrollController = ScrollController();
@@ -44,7 +43,9 @@ class _HomePageState extends State<HomePage>
 
   Config _config = sharedConfigManager.getConfig();
 
-  PackageInfo _packageInfo;
+  bool _showTrayIcon = sharedConfigManager.getConfig().showTrayIcon;
+  String _trayIconStyle = sharedConfigManager.getConfig().trayIconStyle;
+
   Version _latestVersion;
   bool _isAllowedScreenCaptureAccess = true;
   bool _isAllowedScreenSelectionAccess = true;
@@ -85,6 +86,7 @@ class _HomePageState extends State<HomePage>
   @override
   void initState() {
     UriSchemeManager.instance.addListener(this);
+    ShortcutService.instance.setListener(this);
     trayManager.addListener(this);
     windowManager.addListener(this);
     sharedConfigManager.addListener(_configListen);
@@ -96,20 +98,31 @@ class _HomePageState extends State<HomePage>
   @override
   void dispose() {
     UriSchemeManager.instance.removeListener(this);
+    ShortcutService.instance.setListener(null);
     trayManager.removeListener(this);
     windowManager.removeListener(this);
     sharedConfigManager.removeListener(_configListen);
+    _uninit();
     super.dispose();
   }
 
   void _configListen() {
-    _config = sharedConfigManager.getConfig();
+    Config newConfig = sharedConfigManager.getConfig();
+    bool showTrayIcon = newConfig.showTrayIcon;
+    String trayIconStyle = newConfig.trayIconStyle;
+
+    bool trayIconUpdated =
+        _showTrayIcon != showTrayIcon || _trayIconStyle != trayIconStyle;
+
+    _config = newConfig;
+    _showTrayIcon = showTrayIcon;
+    _trayIconStyle = trayIconStyle;
+
+    if (trayIconUpdated) _initTrayIcon();
     setState(() {});
   }
 
   void _init() async {
-    _packageInfo = await PackageInfo.fromPlatform();
-
     if (kIsMacOS) {
       _isAllowedScreenCaptureAccess =
           await screenTextExtractor.isAllowedScreenCaptureAccess();
@@ -117,113 +130,137 @@ class _HomePageState extends State<HomePage>
           await screenTextExtractor.isAllowedScreenSelectionAccess();
     }
 
+    ShortcutService.instance.start();
+
+    windowManager.waitUntilReadyToShow().then((_) async {
+      if (kIsLinux || kIsWindows) {
+        await WindowManager.instance.setAsFrameless();
+
+        Display primaryDisplay = await screenRetriever.getPrimaryDisplay();
+        Size windowSize = await windowManager.getSize();
+        Offset newPosition = Offset(
+          (primaryDisplay.size.width / primaryDisplay.scaleFactor) -
+              windowSize.width -
+              50,
+          50,
+        );
+        await windowManager.setPosition(newPosition);
+      }
+      await windowManager.setSkipTaskbar(true);
+      await Future.delayed(Duration(milliseconds: 400));
+      _windowShow();
+    });
+
     // 初始化托盘图标
-    if (kIsMacOS) {
-      trayManager.setIcon(R.image('tray_icon.png'));
-      trayManager.setContextMenu([
+    _initTrayIcon();
+  }
+
+  Future<void> _initTrayIcon() async {
+    if (kIsWeb) return;
+
+    String trayIconName = kIsWindows ? 'tray_icon.ico' : 'tray_icon.png';
+
+    if (_trayIconStyle == kTrayIconStyleBlack) {
+      trayIconName = kIsWindows ? 'tray_icon_black.ico' : 'tray_icon_black.png';
+    }
+
+    await trayManager.destroy();
+    if (_showTrayIcon) {
+      await trayManager.setIcon(R.image(trayIconName));
+      await Future.delayed(Duration(milliseconds: 200));
+      await trayManager.setContextMenu([
         MenuItem(
-          identifier: kMenuItemIdShowOrHideMainWindow,
-          title: '显示主窗口',
+          key: kMenuItemKeyShow,
+          title: 'tray_context_menu.item_show'.tr(),
         ),
         MenuItem.separator,
         MenuItem(
-          identifier: kMenuItemIdExitApp,
-          title: '退出',
+          key: kMenuItemKeyExitApp,
+          title: 'tray_context_menu.item_exit'.tr(),
         ),
       ]);
     }
+  }
 
-    // 初始化快捷键
-    if (!kIsLinux) {
-      hotKeyManager.unregisterAll();
-      hotKeyManager.register(
-        _config.shortcutInputSettingSubmitWithMetaEnter,
-        keyDownHandler: (_) {
-          if (_config.inputSetting != kInputSettingSubmitWithMetaEnter) {
-            return;
-          }
-          _handleButtonTappedTrans();
-        },
-      );
-      hotKeyManager.register(
-        _config.shortcutShowOrHide,
-        keyDownHandler: (_) async {
-          bool isVisible = await windowManager.isVisible();
-          if (isVisible) {
-            _windowHide();
-          } else {
-            _windowShow();
-          }
-        },
-      );
-      hotKeyManager.register(
-        _config.shortcutExtractFromScreenSelection,
-        keyDownHandler: (_) {
-          _handleExtractTextFromScreenSelection();
-        },
-      );
-      hotKeyManager.register(
-        _config.shortcutExtractFromScreenCapture,
-        keyDownHandler: (_) {
-          _handleExtractTextFromScreenCapture();
-        },
-      );
-    }
+  void _uninit() {
+    ShortcutService.instance.stop();
   }
 
   Future<void> _windowShow() async {
-    if (!kIsMacOS) return;
-
     Size windowSize = await windowManager.getSize();
-    Rect trayIconBounds = await trayManager.getBounds();
-    Size trayIconSize = trayIconBounds.size;
-    Offset trayIconnewPosition = trayIconBounds.topLeft;
+    Offset newPosition;
+    if (kIsMacOS) {
+      Rect trayIconBounds = await trayManager.getBounds();
+      Size trayIconSize = trayIconBounds.size;
+      Offset trayIconnewPosition = trayIconBounds.topLeft;
 
-    Offset newPosition = Offset(
-      trayIconnewPosition.dx - ((windowSize.width - trayIconSize.width) / 2),
-      trayIconnewPosition.dy,
-    );
+      newPosition = Offset(
+        trayIconnewPosition.dx - ((windowSize.width - trayIconSize.width) / 2),
+        trayIconnewPosition.dy,
+      );
+    }
 
     bool isAlwaysOnTop = await windowManager.isAlwaysOnTop();
-    if (!isAlwaysOnTop) {
-      windowManager.setPosition(newPosition);
-      await Future.delayed(Duration(milliseconds: 100));
+    if (newPosition != null && !isAlwaysOnTop) {
+      await windowManager.setPosition(newPosition);
     }
-    windowManager.show();
+
+    bool isVisible = await windowManager.isVisible();
+    if (!isVisible) {
+      await windowManager.show();
+    } else {
+      await windowManager.focus();
+    }
+
+    // Linux 下无法激活窗口临时解决方案
+    if (kIsLinux && !isAlwaysOnTop) {
+      await windowManager.setAlwaysOnTop(true);
+      await Future.delayed(Duration(milliseconds: 100));
+      await windowManager.setAlwaysOnTop(false);
+      await Future.delayed(Duration(milliseconds: 100));
+      await windowManager.focus();
+    }
   }
 
-  void _windowHide() {
-    windowManager.hide();
+  Future<void> _windowHide() async {
+    await windowManager.hide();
   }
 
-  void _resizeWindow() {
+  void _windowResize() {
     if (Navigator.of(context).canPop()) return;
 
     if (_resizeTimer != null && _resizeTimer.isActive) {
       _resizeTimer.cancel();
     }
     _resizeTimer = Timer.periodic(Duration(milliseconds: 10), (_) async {
+      if (!kIsMacOS) {
+        await Future.delayed(Duration(milliseconds: 100));
+      }
       RenderBox rb1 = _bannersViewKey?.currentContext?.findRenderObject();
       RenderBox rb2 = _inputViewKey?.currentContext?.findRenderObject();
       RenderBox rb3 = _resultsViewKey?.currentContext?.findRenderObject();
 
-      double toolbarViewHeight = 36.0 + (kIsWindows ? 34 : 0);
+      double toolbarViewHeight = 36.0;
       double bannersViewHeight = rb1?.size?.height ?? 0;
       double inputViewHeight = rb2?.size?.height ?? 0;
       double resultsViewHeight = rb3?.size?.height ?? 0;
 
       try {
+        double newWindowHeight = toolbarViewHeight +
+            bannersViewHeight +
+            inputViewHeight +
+            resultsViewHeight +
+            ((kVirtualWindowFrameMargin * 2) + 2);
         Size oldSize = await windowManager.getSize();
         Size newSize = Size(
           oldSize.width,
-          toolbarViewHeight +
-              bannersViewHeight +
-              inputViewHeight +
-              resultsViewHeight,
+          newWindowHeight < _config.maxWindowHeight
+              ? newWindowHeight
+              : _config.maxWindowHeight,
         );
         if (oldSize.width != newSize.width ||
             oldSize.height != newSize.height) {
-          windowManager.setSize(newSize, animate: true);
+          await windowManager.setSize(newSize, animate: true);
         }
       } catch (error) {
         print(error);
@@ -238,12 +275,18 @@ class _HomePageState extends State<HomePage>
 
   void _loadData() async {
     try {
-      await sharedLocalDb.loadPro();
-      _latestVersion = await sharedApiClient.version('latest').get();
+      _latestVersion = await proAccount.version('latest').get();
       setState(() {});
-    } catch (error) {
-      print(error);
-    }
+    } catch (error) {}
+    try {
+      ProAccountInterceptor.appBuildNumber = '${sharedEnv.appBuildNumber}';
+      ProAccountInterceptor.appVersion = sharedEnv.appVersion;
+
+      if (proAccount.loggedInGuest == null) {
+        await proAccount.loginAsGuest();
+      }
+      await sharedLocalDb.loadFromProAccount();
+    } catch (error) {}
   }
 
   void _queryData() async {
@@ -351,9 +394,7 @@ class _HomePageState extends State<HomePage>
           LookUpRequest lookUpRequest;
           LookUpResponse lookUpResponse;
           UniTranslateClientError lookUpError;
-          if (sharedTranslateClient
-              .use(identifier)
-              .supportedScopes
+          if ((sharedTranslateClient.use(identifier).supportedScopes ?? [])
               .contains(kScopeLookUp)) {
             try {
               lookUpRequest = LookUpRequest(
@@ -364,9 +405,10 @@ class _HomePageState extends State<HomePage>
               lookUpResponse = await sharedTranslateClient
                   .use(identifier)
                   .lookUp(lookUpRequest);
-            } catch (error) {
-              print(error);
+            } on UniTranslateClientError catch (error) {
               lookUpError = error;
+            } catch (error) {
+              lookUpError = UniTranslateClientError(message: error.toString());
             }
           }
 
@@ -386,9 +428,10 @@ class _HomePageState extends State<HomePage>
               translateResponse = await sharedTranslateClient
                   .use(identifier)
                   .translate(translateRequest);
+            } on UniTranslateClientError catch (error) {
+              lookUpError = error;
             } catch (error) {
-              print(error);
-              translateError = error;
+              lookUpError = UniTranslateClientError(message: error.toString());
             }
           }
 
@@ -436,7 +479,12 @@ class _HomePageState extends State<HomePage>
     bool isRequery = false,
   }) {
     setState(() {
-      _text = newValue;
+      // 移除前后多余的空格
+      _text = (newValue ?? '').trim();
+      // 当使用 Enter 键触发翻译时用空格替换换行符
+      if (_config.inputSetting == kInputSettingSubmitWithEnter) {
+        _text = _text.replaceAll('\n', ' ');
+      }
     });
     if (isRequery) {
       _textEditingController.text = _text;
@@ -444,17 +492,19 @@ class _HomePageState extends State<HomePage>
         baseOffset: _text.length,
         extentOffset: _text.length,
       );
-      _queryData();
+      _handleButtonTappedTrans();
     }
   }
 
   void _handleExtractTextFromScreenSelection() async {
-    ExtractedData extractedData = await screenTextExtractor.extract(
-      mode: ExtractMode.screenSelection,
+    ExtractedData extractedData =
+        await screenTextExtractor.extractFromScreenSelection(
+      useAccessibilityAPIFirst: false,
     );
 
     await _windowShow();
-    await Future.delayed(Duration(milliseconds: 200));
+    await Future.delayed(Duration(milliseconds: 100));
+
     _handleTextChanged(extractedData.text, isRequery: true);
   }
 
@@ -469,6 +519,8 @@ class _HomePageState extends State<HomePage>
     _textEditingController.clear();
     _focusNode.unfocus();
 
+    await _windowHide();
+
     String imagePath;
     if (!kIsWeb) {
       Directory appDir = await sharedConfig.getAppDirectory();
@@ -476,34 +528,54 @@ class _HomePageState extends State<HomePage>
           'Screenshot-${DateTime.now().millisecondsSinceEpoch}.png';
       imagePath = '${appDir.path}/Screenshots/$fileName';
     }
-    ExtractedData extractedData = await screenTextExtractor.extract(
-      mode: ExtractMode.screenCapture,
+    ExtractedData extractedData =
+        await screenTextExtractor.extractFromScreenCapture(
       imagePath: imagePath,
     );
 
+    File imageFile = File(extractedData.imagePath);
+    if (extractedData.base64Image == null && !imageFile.existsSync()) {
+      return;
+    }
+
     await _windowShow();
-    await Future.delayed(Duration(milliseconds: 200));
-    if (extractedData.text == null) {
-      _extractedData = extractedData;
-      setState(() {});
-      DetectTextResponse detectTextResponse =
-          await sharedOcrClient.use(sharedConfig.defaultOcrEngineId).detectText(
-                DetectTextRequest(
-                  imagePath: extractedData.imagePath,
-                  base64Image: extractedData.base64Image,
-                ),
-              );
-      _extractedData.text = detectTextResponse.text;
-      _handleTextChanged(detectTextResponse.text, isRequery: true);
-    } else {
-      _handleTextChanged(extractedData.text, isRequery: true);
+    await Future.delayed(Duration(milliseconds: 100));
+
+    try {
+      if (extractedData.text == null) {
+        _extractedData = extractedData;
+        setState(() {});
+        DetectTextResponse detectTextResponse = await sharedOcrClient
+            .use(sharedConfig.defaultOcrEngineId)
+            .detectText(
+              DetectTextRequest(
+                imagePath: extractedData.imagePath,
+                base64Image: extractedData.base64Image,
+              ),
+            );
+        print(detectTextResponse.toJson());
+        _extractedData.text = detectTextResponse.text;
+        _handleTextChanged(detectTextResponse.text, isRequery: true);
+      } else {
+        _handleTextChanged(extractedData.text, isRequery: true);
+      }
+    } catch (error) {
+      BotToast.showText(
+        text: error.toString(),
+        align: Alignment.center,
+      );
     }
   }
 
   void _handleExtractTextFromClipboard() async {
-    ExtractedData extractedData = await screenTextExtractor.extract(
-      mode: ExtractMode.clipboard,
-    );
+    bool windowIsVisible = await windowManager.isVisible();
+    if (!windowIsVisible) {
+      await _windowShow();
+      await Future.delayed(Duration(milliseconds: 100));
+    }
+
+    ExtractedData extractedData =
+        await screenTextExtractor.extractFromClipboard();
     _handleTextChanged(extractedData.text, isRequery: true);
   }
 
@@ -522,7 +594,7 @@ class _HomePageState extends State<HomePage>
   void _handleButtonTappedTrans() {
     if (_text.isEmpty) {
       BotToast.showText(
-        text: '请输入要翻译的单词或文字',
+        text: 'page_home.msg_please_enter_word_or_text'.tr(),
         align: Alignment.center,
       );
       _focusNode.requestFocus();
@@ -533,10 +605,7 @@ class _HomePageState extends State<HomePage>
 
   Widget _buildBannersView(BuildContext context) {
     bool isFoundNewVersion = _latestVersion != null &&
-        _latestVersion.buildNumber >
-            int.parse(_packageInfo?.buildNumber?.isEmpty == true
-                ? '9999'
-                : _packageInfo?.buildNumber);
+        _latestVersion.buildNumber > sharedEnv.appBuildNumber;
 
     bool isNoAllowedAllAccess =
         !(_isAllowedScreenCaptureAccess && _isAllowedScreenSelectionAccess);
@@ -682,7 +751,7 @@ class _HomePageState extends State<HomePage>
           children: [
             ToolbarItemAlwaysOnTop(),
             Expanded(child: Container()),
-            ToolbarItemSponsor(),
+            // ToolbarItemSponsor(),
             ToolbarItemSettings(
               onSettingsPageDismiss: () {
                 setState(() {});
@@ -697,11 +766,44 @@ class _HomePageState extends State<HomePage>
 
   @override
   Widget build(BuildContext context) {
-    WidgetsBinding.instance.addPostFrameCallback((_) => _resizeWindow());
+    WidgetsBinding.instance.addPostFrameCallback((_) => _windowResize());
     return Scaffold(
       appBar: _buildAppBar(context),
       body: _buildBody(context),
     );
+  }
+
+  @override
+  void onShortcutKeyDownShowOrHide() async {
+    bool isVisible = await windowManager.isVisible();
+    if (isVisible) {
+      _windowHide();
+    } else {
+      _windowShow();
+    }
+  }
+
+  @override
+  void onShortcutKeyDownExtractFromScreenSelection() {
+    _handleExtractTextFromScreenSelection();
+  }
+
+  @override
+  void onShortcutKeyDownExtractFromScreenCapture() {
+    _handleExtractTextFromScreenCapture();
+  }
+
+  @override
+  void onShortcutKeyDownExtractFromClipboard() {
+    _handleExtractTextFromClipboard();
+  }
+
+  @override
+  void onShortcutKeyDownSubmitWithMateEnter() {
+    if (_config.inputSetting != kInputSettingSubmitWithMetaEnter) {
+      return;
+    }
+    _handleButtonTappedTrans();
   }
 
   @override
@@ -720,23 +822,24 @@ class _HomePageState extends State<HomePage>
   }
 
   @override
-  void onTrayIconMouseUp() async {
+  void onTrayIconMouseDown() async {
     _windowShow();
   }
 
   @override
-  void onTrayIconRightMouseUp() {
+  void onTrayIconRightMouseDown() {
     trayManager.popUpContextMenu();
   }
 
   @override
-  void onTrayMenuItemClick(MenuItem menuItem) {
-    switch (menuItem.identifier) {
-      case kMenuItemIdShowOrHideMainWindow:
+  void onTrayMenuItemClick(MenuItem menuItem) async {
+    switch (menuItem.key) {
+      case kMenuItemKeyShow:
         _windowShow();
         break;
-      case kMenuItemIdExitApp:
-        windowManager.terminate();
+      case kMenuItemKeyExitApp:
+        await trayManager.destroy();
+        exit(0);
         break;
     }
   }

@@ -128,14 +128,13 @@ engine:
   iciba: 爱词霸
   sogou: 搜狗翻译
   tencent: 腾讯翻译君
-  yeekit: YEEKIT
   youdao: 有道翻译
 engine_scope:
   detectlanguage: 语种识别
   lookup: 查词
   translate: 翻译
 ocr_engine:
-  yeekit: YEEKIT
+  built_in: 内置文字识别
   youdao: 有道通用文字识别
 translation_mode:
   auto: 自动
@@ -147,6 +146,9 @@ theme_mode:
 word_pronunciation:
   us: 美
   uk: 英
+tray_context_menu:
+  item_show: 显示
+  item_exit: 退出
 # Pages
 page_home:
   newversion_banner_text_found_new_version: "发现新版本：{}"
@@ -160,20 +162,23 @@ page_home:
   limited_banner_tip_help: 查看帮助文档
   limited_banner_msg_allow_access_tip: 点击「授权」后如无任何响应，请点击「前往设置」进行手动设置。
   limited_banner_msg_all_access_allowed: 屏幕取词功能已启用
-  limited_banner_msg_all_access_not_allowed: 未获得所需权限，\n请重新检查并进行设置。
-  input_hint: 在此输入要翻译的单词或文字
+  limited_banner_msg_all_access_not_allowed: "未获得所需权限，\n请重新检查并进行设置。"
+  input_hint: 在此处输入单词或文本
+  text_extracting_text: 正在提取文字...
   tip_translation_mode: 当前翻译模式：{}
   tip_extract_text_from_screen_capture: 截取屏幕区域并识别文字
   tip_extract_text_from_clipboard: 读取剪切板内容
   btn_sponsor: 支持一下
   btn_clear: 清空
   btn_trans: 翻译
+  msg_please_enter_word_or_text: 未输入文本或未提取到文本
 page_language_chooser:
   title: 选择语言
   pref_section_title_all: 全部
 page_ocr_engine_chooser:
   title: 文字识别引擎
   pref_section_title_private: 私有
+  pref_item_title_no_available_engines: 无可用的引擎
 page_ocr_engine_new:
   title: 添加文字识别引擎
   pref_section_title_engine_type: 引擎类型
@@ -185,15 +190,24 @@ page_ocr_engines_manage:
   pref_section_title_private: 私有
 page_setting_app_language:
   title: 显示语言
-page_setting_screen_extract_text:
-  title: 屏幕取词
+page_setting_extract_text:
+  title: 取词
   pref_section_title_default_detect_text_engine: 默认文字识别引擎
+page_setting_interface:
+  title: 界面
+  pref_section_title_tray_icon: 托盘图标
+  pref_section_title_tray_icon_style: 托盘图标样式
+  pref_section_title_max_window_height: 最大窗口高度（逻辑像素）
+  pref_item_title_show_tray_icon: 显示托盘图标
+  pref_item_title_tray_icon_style_white: 白色
+  pref_item_title_tray_icon_style_black: 黑色
 page_setting_shortcuts:
   title: 快捷键
-  pref_section_title_screen_extract_text: 屏幕取词
+  pref_section_title_extract_text: 屏幕/剪切板取词
   pref_item_title_show_or_hide: 显示/隐藏
   pref_item_title_extract_text_from_selection: 选中文字
   pref_item_title_extract_text_from_capture: 截取区域
+  pref_item_title_extract_text_from_clipboard: 剪切板
 page_setting_theme_mode:
   title: 主题模式
 page_setting_translate:
@@ -209,18 +223,27 @@ page_settings:
   pref_section_title_shortcuts: 快捷键
   pref_section_title_input_settings: 输入设置
   pref_section_title_service_integration: 服务接入
+  pref_section_title_others: 其他
+  pref_item_title_extract_text: 取词
   pref_item_title_translate: 翻译
-  pref_item_title_screen_extract_text: 屏幕取词
+  pref_item_title_interface: 界面
   pref_item_title_app_language: 显示语言
   pref_item_title_theme_mode: 主题模式
   pref_item_title_keyboard_shortcuts: 键盘快捷键
   pref_item_title_submit_with_enter: 用 Enter 提交
-  pref_item_title_submit_with_meta_enter: 用 ⌘ + Enter 提交
+  pref_item_title_submit_with_meta_enter: 用 Ctrl + Enter 提交
+  pref_item_title_submit_with_meta_enter_mac: 用 ⌘ + Enter 提交
   pref_item_title_engines: 文本翻译
   pref_item_title_ocr_engines: 文字识别
+  pref_item_title_sponsor: 支持一下
+  pref_item_title_about: 关于比译
+  pref_item_title_exit_app: 退出应用
+  exit_app_dialog:
+    title: 您确定要退出吗？
 page_translation_engine_chooser:
   title: 文本翻译引擎
   pref_section_title_private: 私有
+  pref_item_title_no_available_engines: 无可用的引擎
 page_translation_engine_new:
   title: 添加文本翻译引擎
   pref_section_title_engine_type: 引擎类型
@@ -236,3 +259,5 @@ page_translation_target_new:
   title_with_edit: 编辑翻译目标
   source_language: 源语言
   target_language: 目标语言
+widget_record_shortcut_dialog:
+  title: 自定义快捷键

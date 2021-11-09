@@ -8,8 +8,13 @@ const kPrefTranslationMode = 'translation_mode';
 const kPrefDefaultEngineId = 'default_engine_id';
 // 取词
 const kPrefDefaultOcrEngineId = 'default_ocr_engine_id';
-// 主题模式
+// 界面
+const kPrefShowTrayIcon = 'show_tray_icon';
+const kPrefTrayIconStyle = 'tray_icon_style';
+const kPrefMaxWindowHeight = 'max_window_height';
+// 显示语言
 const kPrefAppLanguage = 'app_language';
+// 主题模式
 const kPrefThemeMode = 'theme_mode';
 // 快捷键
 const kPrefShortcutShowOrHide = 'shortcut_show_or_hide';
@@ -22,6 +27,9 @@ const kPrefInputSetting = 'input_setting';
 
 const kTranslationModeAuto = 'auto';
 const kTranslationModeManual = 'manual';
+
+const kTrayIconStyleWhite = 'white';
+const kTrayIconStyleBlack = 'black';
 
 const kInputSettingSubmitWithEnter = 'submit-with-enter';
 const kInputSettingSubmitWithMetaEnter = 'submit-with-meta+enter';

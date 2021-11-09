@@ -2,9 +2,13 @@
 
 [![GitHub (pre-)release](https://img.shields.io/github/release/biyidev/biyi_app/all.svg?style=flat-square)](https://github.com/biyidev/biyi_app/releases)
 
-`Biyi` is a convenient translation and dictionary app written in `dart` / `Flutter`. [View document](https://biyidev.com/docs/)
+`Biyi` is a convenient translation and dictionary app written in `Flutter`. [View document](https://biyidev.com/docs/)
 
 > "Biyi" (比译) is the Chinese word for "Comparison + translation".
+
+[![Discord](https://img.shields.io/badge/discord-%237289DA.svg?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/9CaArkhC)
+
+---
 
 ![](https://biyidev.com/images/screenshots/biyi_app_extract_text_from_screen_selection.gif)
 
@@ -12,7 +16,55 @@
 
 | Linux | macOS | Windows |
 | :---: | :---: | :-----: |
-|  ➖   |  ✔️   |   ➖    |
+|  ✔️   |  ✔️   |   ✔️    |
+
+## Installation
+
+Downloads are available on the [Releases](https://github.com/biyidev/biyi_app/releases/latest) page. Also check out the [website](https://biyidev.com/release-notes) for other installation methods.
+
+## Development
+
+We welcome you to join the development of `Biyi`.
+
+### Before You Start
+
+1. Create working directory
+
+```
+$ mkdir ~/biyidev
+$ cd ~/biyidev
+```
+
+2. Clone dependency repos via git:
+
+```
+$ git clone https://github.com/biyidev/uni_ocr.git
+$ git clone https://github.com/biyidev/uni_translate.git
+```
+
+3. Clone this repo via git:
+
+```
+$ git clone https://github.com/biyidev/biyi_app.git
+```
+
+4. Change to `biyi_app` directory
+
+```
+$ cd ~/biyidev/biyi_app
+```
+
+5. Install dependencies
+
+```
+$ flutter pub get
+```
+
+### Run app
+
+```
+$ flutter run -d linux / macos / windows
+```
 
 ## Discussion
 

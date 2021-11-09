@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:window_manager/window_manager.dart';
 
 import '../../includes.dart';
 
@@ -35,9 +36,6 @@ class _ToolbarItemSettingsState extends State<ToolbarItemSettings> {
           color: Theme.of(context).iconTheme.color,
         ),
         onPressed: () async {
-          Size size = await windowManager.getSize();
-          windowManager.setSize(Size(size.width, 680));
-
           Future<void> future = showModalBottomSheet(
             context: context,
             isScrollControlled: true,
@@ -62,6 +60,12 @@ class _ToolbarItemSettingsState extends State<ToolbarItemSettings> {
             },
           );
           future.whenComplete(() => _handleDismiss());
+
+          if (kIsLinux || kIsMacOS || kIsWindows) {
+            await Future.delayed(Duration(milliseconds: 120));
+            Size size = await windowManager.getSize();
+            await windowManager.setSize(Size(size.width, 680.0));
+          }
         },
       ),
     );
