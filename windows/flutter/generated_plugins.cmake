@@ -5,6 +5,7 @@
 list(APPEND FLUTTER_PLUGIN_LIST
   hotkey_manager
   libwinmedia
+  screen_capturer
   screen_retriever
   screen_text_extractor
   tray_manager

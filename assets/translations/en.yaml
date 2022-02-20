@@ -4,6 +4,7 @@ ok: OK
 cancel: Cancel
 add: Add
 delete: Delete
+copied: Copied
 please_choose: Please Choose
 
 language:
@@ -114,14 +115,13 @@ language:
   xh: Xhosa
   yi: Yiddish
   yo: Yoruba
-  zh: Chinese (Simplified)
-  zh-CN: Chinese (Simplified)
+  zh: Chinese
+  zh-CN: Chinese
   zh-TW: Chinese (Traditional)
   zu: Zulu
 engine:
   baidu: Baidu
   caiyun: Caiyun
-  cloudoptai: CloudoptAI
   deepl: DeepL
   google: Google
   ibmwatson: IBMWatson
@@ -148,7 +148,13 @@ word_pronunciation:
   uk: UK
 tray_context_menu:
   item_show: Show
-  item_exit: Exit
+  item_quick_start_guide: Quick Start
+  item_sponsor: Sponsor
+  item_discussion: Join Discussion
+  item_quit_app: Quit Biyi
+  item_discussion_subitem_discord_server: Join Discord
+  item_discussion_subitem_qq_group: Join QQ Group
+  item_discussion_subitem_wechat_group: Join WeChat Group
 # Pages
 page_home:
   newversion_banner_text_found_new_version: "New version found: {}"
@@ -172,6 +178,7 @@ page_home:
   btn_clear: Clear
   btn_trans: Translate
   msg_please_enter_word_or_text: No text entered or text not extracted
+  msg_capture_screen_area_canceled: Capture screen area has been canceled
 page_language_chooser:
   title: Choose language
   pref_section_title_all: All
@@ -193,18 +200,18 @@ page_setting_app_language:
 page_setting_extract_text:
   title: Screen extract text
   pref_section_title_default_detect_text_engine: Default detect text engine
+  pref_item_auto_copy_detected_text: Auto copy the detected text
 page_setting_interface:
   title: Interface
   pref_section_title_tray_icon: Tray Icon
   pref_section_title_tray_icon_style: Tray Icon Style
   pref_section_title_max_window_height: Maximum window height (logical pixels)
   pref_item_title_show_tray_icon: Show Tray Icon
-  pref_item_title_tray_icon_style_white: White
-  pref_item_title_tray_icon_style_black: Black
 page_setting_shortcuts:
   title: Shortcuts
   pref_section_title_extract_text: Screen / Clipboard extract text
   pref_item_title_show_or_hide: Show/Hide
+  pref_item_title_hide: Hide
   pref_item_title_extract_text_from_selection: Selection
   pref_item_title_extract_text_from_capture: Capture Area
   pref_item_title_extract_text_from_clipboard: Clipboard
@@ -215,6 +222,7 @@ page_setting_translate:
   pref_section_title_translation_mode: Translation mode
   pref_section_title_default_detect_language_engine: Default detect language engine
   pref_section_title_translation_target: Translation target
+  pref_item_title_double_click_copy_result: Double-click to copy translation result
 page_settings:
   title: Settings
   text_version: Version {} BUILD {}
@@ -222,6 +230,7 @@ page_settings:
   pref_section_title_appearance: Appearance
   pref_section_title_shortcuts: Shortcuts
   pref_section_title_input_settings: Input Settings
+  pref_section_title_advanced: Advanced
   pref_section_title_service_integration: Service Integration
   pref_section_title_others: Others
   pref_item_title_extract_text: Extract text
@@ -233,6 +242,7 @@ page_settings:
   pref_item_title_submit_with_enter: Submit with Enter
   pref_item_title_submit_with_meta_enter: Submit with Ctrl + Enter
   pref_item_title_submit_with_meta_enter_mac: Submit with ⌘ + Enter
+  pref_item_title_launch_at_startup: Launch when you log in
   pref_item_title_engines: Text Translation
   pref_item_title_ocr_engines: Text Detection
   pref_item_title_sponsor: Sponsor

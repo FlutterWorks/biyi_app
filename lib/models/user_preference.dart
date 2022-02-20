@@ -6,11 +6,12 @@ const kPreferenceTypeBool = 'bool';
 // 翻译
 const kPrefTranslationMode = 'translation_mode';
 const kPrefDefaultEngineId = 'default_engine_id';
+const kPrefDoubleClickCopyResult = 'double_click_copy_result';
 // 取词
 const kPrefDefaultOcrEngineId = 'default_ocr_engine_id';
+const kPrefAutoCopyDetectedText = 'auto_copy_detected_text';
 // 界面
 const kPrefShowTrayIcon = 'show_tray_icon';
-const kPrefTrayIconStyle = 'tray_icon_style';
 const kPrefMaxWindowHeight = 'max_window_height';
 // 显示语言
 const kPrefAppLanguage = 'app_language';
@@ -27,9 +28,6 @@ const kPrefInputSetting = 'input_setting';
 
 const kTranslationModeAuto = 'auto';
 const kTranslationModeManual = 'manual';
-
-const kTrayIconStyleWhite = 'white';
-const kTrayIconStyleBlack = 'black';
 
 const kInputSettingSubmitWithEnter = 'submit-with-enter';
 const kInputSettingSubmitWithMetaEnter = 'submit-with-meta+enter';

@@ -1,4 +1,3 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
@@ -49,15 +48,14 @@ class _SettingThemeModePageState extends State<SettingThemeModePage> {
                   'theme_mode.${describeEnum(ThemeMode.dark)}'.tr(),
                 ),
               ),
-              if (!kIsWindows)
-                PreferenceListRadioItem(
-                  value: ThemeMode.system,
-                  groupValue: _themeMode,
-                  onChanged: _handleChanged,
-                  title: Text(
-                    'theme_mode.${describeEnum(ThemeMode.system)}'.tr(),
-                  ),
+              PreferenceListRadioItem(
+                value: ThemeMode.system,
+                groupValue: _themeMode,
+                onChanged: _handleChanged,
+                title: Text(
+                  'theme_mode.${describeEnum(ThemeMode.system)}'.tr(),
                 ),
+              ),
             ],
           ),
         ],

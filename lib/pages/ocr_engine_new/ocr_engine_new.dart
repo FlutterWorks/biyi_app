@@ -1,7 +1,4 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-
-import 'package:ocr_engine_youdao/ocr_engine_youdao.dart';
 
 import '../../includes.dart';
 
@@ -60,6 +57,8 @@ class _OcrEngineNewPageState extends State<OcrEngineNewPage> {
           option: _option,
         );
     await sharedLocalDb.write();
+
+    (sharedOcrClient.adapter as AutoloadOcrClientAdapter).renew(_identifier);
 
     Navigator.of(context).pop();
   }

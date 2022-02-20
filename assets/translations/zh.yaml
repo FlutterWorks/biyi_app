@@ -4,6 +4,7 @@ ok: 确定
 cancel: 取消
 add: 添加
 delete: 删除
+copied: 已复制
 please_choose: 请选择
 
 language:
@@ -114,14 +115,13 @@ language:
   xh: 南非科萨语
   yi: 意第绪语
   yo: 约鲁巴语
-  zh: 中文(简体)
-  zh-CN: 中文(简体)
+  zh: 中文
+  zh-CN: 中文
   zh-TW: 中文(繁体)
   zu: 南非祖鲁语
 engine:
   baidu: 百度翻译
   caiyun: 彩云小译
-  cloudoptai: CloudoptAI
   deepl: DeepL
   google: 谷歌翻译
   ibmwatson: IBMWatson
@@ -134,7 +134,7 @@ engine_scope:
   lookup: 查词
   translate: 翻译
 ocr_engine:
-  built_in: 内置文字识别
+  built_in: 内置
   youdao: 有道通用文字识别
 translation_mode:
   auto: 自动
@@ -148,7 +148,13 @@ word_pronunciation:
   uk: 英
 tray_context_menu:
   item_show: 显示
-  item_exit: 退出
+  item_quick_start_guide: 快速入门
+  item_sponsor: 支持一下
+  item_discussion: 加入讨论
+  item_quit_app: 退出比译
+  item_discussion_subitem_discord_server: 加入 Discord
+  item_discussion_subitem_qq_group: 加入 QQ 群
+  item_discussion_subitem_wechat_group: 加入微信群
 # Pages
 page_home:
   newversion_banner_text_found_new_version: "发现新版本：{}"
@@ -172,6 +178,7 @@ page_home:
   btn_clear: 清空
   btn_trans: 翻译
   msg_please_enter_word_or_text: 未输入文本或未提取到文本
+  msg_capture_screen_area_canceled: 截取屏幕区域已取消
 page_language_chooser:
   title: 选择语言
   pref_section_title_all: 全部
@@ -193,18 +200,18 @@ page_setting_app_language:
 page_setting_extract_text:
   title: 取词
   pref_section_title_default_detect_text_engine: 默认文字识别引擎
+  pref_item_auto_copy_detected_text: 自动复制检测到的文本
 page_setting_interface:
   title: 界面
   pref_section_title_tray_icon: 托盘图标
   pref_section_title_tray_icon_style: 托盘图标样式
   pref_section_title_max_window_height: 最大窗口高度（逻辑像素）
   pref_item_title_show_tray_icon: 显示托盘图标
-  pref_item_title_tray_icon_style_white: 白色
-  pref_item_title_tray_icon_style_black: 黑色
 page_setting_shortcuts:
   title: 快捷键
   pref_section_title_extract_text: 屏幕/剪切板取词
   pref_item_title_show_or_hide: 显示/隐藏
+  pref_item_title_hide: 隐藏
   pref_item_title_extract_text_from_selection: 选中文字
   pref_item_title_extract_text_from_capture: 截取区域
   pref_item_title_extract_text_from_clipboard: 剪切板
@@ -215,6 +222,7 @@ page_setting_translate:
   pref_section_title_translation_mode: 翻译模式
   pref_section_title_default_detect_language_engine: 默认语种识别引擎
   pref_section_title_translation_target: 翻译目标
+  pref_item_title_double_click_copy_result: 双击复制翻译结果
 page_settings:
   title: 设置
   text_version: 版本 {} BUILD {}
@@ -222,6 +230,7 @@ page_settings:
   pref_section_title_appearance: 外观
   pref_section_title_shortcuts: 快捷键
   pref_section_title_input_settings: 输入设置
+  pref_section_title_advanced: 高级
   pref_section_title_service_integration: 服务接入
   pref_section_title_others: 其他
   pref_item_title_extract_text: 取词
@@ -233,6 +242,7 @@ page_settings:
   pref_item_title_submit_with_enter: 用 Enter 提交
   pref_item_title_submit_with_meta_enter: 用 Ctrl + Enter 提交
   pref_item_title_submit_with_meta_enter_mac: 用 ⌘ + Enter 提交
+  pref_item_title_launch_at_startup: 登录时启动
   pref_item_title_engines: 文本翻译
   pref_item_title_ocr_engines: 文字识别
   pref_item_title_sponsor: 支持一下

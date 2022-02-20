@@ -1,10 +1,11 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:hotkey_manager/hotkey_manager.dart';
 
 import '../../../includes.dart';
 
 class SettingShortcutsPage extends StatefulWidget {
+  const SettingShortcutsPage({Key key}) : super(key: key);
+
   @override
   State<StatefulWidget> createState() => _SettingShortcutsPageState();
 }
@@ -39,13 +40,18 @@ class _SettingShortcutsPageState extends State<SettingShortcutsPage> {
   Future<void> _handleClickRegisterNewHotKey(
     BuildContext context, {
     String shortcutKey,
+    HotKeyScope shortcutScope = HotKeyScope.system,
   }) async {
     return showDialog<void>(
       context: context,
+      barrierDismissible: false,
       builder: (BuildContext ctx) {
         return RecordHotKeyDialog(
           onHotKeyRecorded: (newHotKey) {
-            sharedConfigManager.setShortcut(shortcutKey, newHotKey);
+            sharedConfigManager.setShortcut(
+              shortcutKey,
+              newHotKey..scope = shortcutScope,
+            );
           },
         );
       },
@@ -67,6 +73,19 @@ class _SettingShortcutsPageState extends State<SettingShortcutsPage> {
                   _handleClickRegisterNewHotKey(
                     context,
                     shortcutKey: kShortcutShowOrHide,
+                  );
+                },
+              ),
+              PreferenceListItem(
+                title: Text(t('pref_item_title_hide')),
+                detailText: HotKeyVirtualView(
+                  hotKey: _config.shortcutHide,
+                ),
+                onTap: () {
+                  _handleClickRegisterNewHotKey(
+                    context,
+                    shortcutKey: kShortcutHide,
+                    shortcutScope: HotKeyScope.inapp,
                   );
                 },
               ),

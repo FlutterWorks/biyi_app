@@ -9,6 +9,7 @@ import 'package:hotkey_manager/hotkey_manager.dart';
 import '../includes.dart';
 
 const kShortcutShowOrHide = 'shortcut_show_or_hide';
+const kShortcutHide = 'shortcut_hide';
 const kShortcutExtractFromScreenSelection =
     'shortcut_extract_from_screen_selection';
 const kShortcutExtractFromScreenCapture =
@@ -101,14 +102,16 @@ class Config {
 
   String translationMode;
   String defaultEngineId;
+  bool doubleClickCopyResult;
   String defaultOcrEngineId;
+  bool autoCopyDetectedText;
   bool showTrayIcon;
-  String trayIconStyle;
   double maxWindowHeight;
   String appLanguage;
   ThemeMode themeMode;
   String inputSetting;
   HotKey shortcutShowOrHide;
+  HotKey shortcutHide;
   HotKey shortcutExtractFromScreenSelection;
   HotKey shortcutExtractFromScreenCapture;
   HotKey shortcutExtractFromClipboard;
@@ -144,20 +147,24 @@ class ConfigManager extends _ConfigChangeNotifier {
     Config.instance.defaultEngineId = await _getString(
       kPrefDefaultEngineId,
     );
+    Config.instance.doubleClickCopyResult = await _getBool(
+      kPrefDoubleClickCopyResult,
+      defaultValue: true,
+    );
     Config.instance.defaultOcrEngineId = await _getString(
       kPrefDefaultOcrEngineId,
+    );
+    Config.instance.autoCopyDetectedText = await _getBool(
+      kPrefAutoCopyDetectedText,
+      defaultValue: true,
     );
     Config.instance.showTrayIcon = await _getBool(
       kPrefShowTrayIcon,
       defaultValue: true,
     );
-    Config.instance.trayIconStyle = await _getString(
-      kPrefTrayIconStyle,
-      defaultValue: kIsWindows ? kTrayIconStyleBlack : kTrayIconStyleWhite,
-    );
     Config.instance.maxWindowHeight = double.parse(await _getString(
       kPrefMaxWindowHeight,
-      defaultValue: '600',
+      defaultValue: '800',
     ));
     Config.instance.appLanguage = await _getString(
       kPrefAppLanguage,
@@ -171,6 +178,15 @@ class ConfigManager extends _ConfigChangeNotifier {
     Config.instance.inputSetting = await _getString(
       kPrefInputSetting,
       defaultValue: kInputSettingSubmitWithEnter,
+    );
+    Config.instance.shortcutHide = await getShortcut(
+      kShortcutHide,
+      defaultValue: HotKey(
+        KeyCode.escape,
+        modifiers: [],
+        identifier: kShortcutHide,
+        scope: HotKeyScope.inapp,
+      ),
     );
     Config.instance.shortcutShowOrHide = await getShortcut(
       kShortcutShowOrHide,
@@ -214,16 +230,20 @@ class ConfigManager extends _ConfigChangeNotifier {
     return _setString(kPrefDefaultEngineId, value);
   }
 
+  Future<void> setDoubleClickCopyResult(bool value) {
+    return _setBool(kPrefDoubleClickCopyResult, value);
+  }
+
   Future<void> setDefaultOcrEngineId(String value) {
     return _setString(kPrefDefaultOcrEngineId, value);
   }
 
-  Future<void> setShowTrayIcon(bool value) {
-    return _setBool(kPrefShowTrayIcon, value);
+  Future<void> setAutoCopyDetectedText(bool value) {
+    return _setBool(kPrefAutoCopyDetectedText, value);
   }
 
-  Future<void> setTrayIconStyle(String value) {
-    return _setString(kPrefTrayIconStyle, value);
+  Future<void> setShowTrayIcon(bool value) {
+    return _setBool(kPrefShowTrayIcon, value);
   }
 
   Future<void> setMaxWindowHeight(double value) {
