@@ -5,6 +5,7 @@ import 'package:bot_toast/bot_toast.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:protocol_handler/protocol_handler.dart';
 import 'package:screen_capturer/screen_capturer.dart';
 import 'package:screen_retriever/screen_retriever.dart';
 import 'package:screen_text_extractor/screen_text_extractor.dart';
@@ -16,7 +17,6 @@ import 'package:window_manager/window_manager.dart';
 import '../../../includes.dart';
 
 import './limited_functionality_banner.dart';
-import './new_version_found_banner.dart';
 import './toolbar_item_always_on_top.dart';
 import './toolbar_item_settings.dart';
 import './translation_input_view.dart';
@@ -24,15 +24,13 @@ import './translation_results_view.dart';
 import './translation_target_select_view.dart';
 
 const kMenuItemKeyQuickStartGuide = 'quick-start-guide';
-const kMenuItemKeySponsor = 'sponsor';
 const kMenuItemKeyQuitApp = 'quit-app';
 
 const kMenuSubItemKeyJoinDiscord = 'subitem-join-discord';
 const kMenuSubItemKeyJoinQQGroup = 'subitem-join-qq';
-const kMenuSubItemKeyJoinWeChatGroup = 'subitem-join-wechat';
 
 class DesktopPopupPage extends StatefulWidget {
-  const DesktopPopupPage({Key key}) : super(key: key);
+  const DesktopPopupPage({Key? key}) : super(key: key);
 
   @override
   State<StatefulWidget> createState() => _DesktopPopupPageState();
@@ -41,10 +39,10 @@ class DesktopPopupPage extends StatefulWidget {
 class _DesktopPopupPageState extends State<DesktopPopupPage>
     with
         WidgetsBindingObserver,
-        TrayListener,
-        WindowListener,
+        ProtocolListener,
         ShortcutListener,
-        UriSchemeListener {
+        TrayListener,
+        WindowListener {
   final FocusNode _focusNode = FocusNode();
   final TextEditingController _textEditingController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
@@ -53,15 +51,14 @@ class _DesktopPopupPageState extends State<DesktopPopupPage>
   final GlobalKey _inputViewKey = GlobalKey();
   final GlobalKey _resultsViewKey = GlobalKey();
 
-  Brightness _brightness;
+  Brightness _brightness = Brightness.light;
   Config _config = sharedConfigManager.getConfig();
 
   bool _showTrayIcon = sharedConfigManager.getConfig().showTrayIcon;
   String _appLanguage = sharedConfigManager.getConfig().appLanguage;
 
-  Offset _lastShownPosition;
+  Offset _lastShownPosition = Offset.zero;
 
-  Version _latestVersion;
   bool _isAllowedScreenCaptureAccess = true;
   bool _isAllowedScreenSelectionAccess = true;
 
@@ -72,15 +69,15 @@ class _DesktopPopupPageState extends State<DesktopPopupPage>
 
   bool _querySubmitted = false;
   String _text = '';
-  String _textDetectedLanguage;
-  CapturedData _capturedData;
+  String? _textDetectedLanguage;
+  CapturedData? _capturedData;
   bool _isTextDetecting = false;
-  ExtractedData _extractedData;
+  ExtractedData? _extractedData;
   List<TranslationResult> _translationResultList = [];
 
   List<Future> _futureList = [];
 
-  Timer _resizeTimer;
+  Timer? _resizeTimer;
 
   List<TranslationEngineConfig> get _translationEngineList {
     return sharedLocalDb.engines.list(
@@ -102,25 +99,24 @@ class _DesktopPopupPageState extends State<DesktopPopupPage>
 
   @override
   void initState() {
-    WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance?.addObserver(this);
     sharedConfigManager.addListener(_configListen);
     if (kIsLinux || kIsMacOS || kIsWindows) {
-      UriSchemeManager.instance.addListener(this);
+      protocolHandler.addListener(this);
       ShortcutService.instance.setListener(this);
       trayManager.addListener(this);
       windowManager.addListener(this);
       _init();
     }
-    _loadData();
     super.initState();
   }
 
   @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
+    WidgetsBinding.instance?.removeObserver(this);
     sharedConfigManager.removeListener(_configListen);
     if (kIsLinux || kIsMacOS || kIsWindows) {
-      UriSchemeManager.instance.removeListener(this);
+      protocolHandler.removeListener(this);
       ShortcutService.instance.setListener(null);
       trayManager.removeListener(this);
       windowManager.removeListener(this);
@@ -132,7 +128,7 @@ class _DesktopPopupPageState extends State<DesktopPopupPage>
   @override
   void didChangePlatformBrightness() {
     Brightness newBrightness =
-        WidgetsBinding.instance.window.platformBrightness;
+        WidgetsBinding.instance!.window.platformBrightness;
 
     if (newBrightness != _brightness) {
       _brightness = newBrightness;
@@ -174,12 +170,12 @@ class _DesktopPopupPageState extends State<DesktopPopupPage>
         if (kIsLinux) {
           await windowManager.setAsFrameless();
         } else {
-          await windowManager.setTitleBarStyle('hidden');
+          await windowManager.setTitleBarStyle(TitleBarStyle.hidden);
         }
         Display primaryDisplay = await screenRetriever.getPrimaryDisplay();
         Size windowSize = await windowManager.getSize();
         _lastShownPosition = Offset(
-          (primaryDisplay.size.width / primaryDisplay.scaleFactor) -
+          (primaryDisplay.size.width / (primaryDisplay.scaleFactor ?? 1)) -
               windowSize.width -
               50,
           50,
@@ -223,10 +219,6 @@ class _DesktopPopupPageState extends State<DesktopPopupPage>
           title: 'tray_context_menu.item_quick_start_guide'.tr(),
         ),
         MenuItem(
-          key: kMenuItemKeySponsor,
-          title: 'tray_context_menu.item_sponsor'.tr(),
-        ),
-        MenuItem(
           title: 'tray_context_menu.item_discussion'.tr(),
           items: [
             MenuItem(
@@ -237,11 +229,6 @@ class _DesktopPopupPageState extends State<DesktopPopupPage>
             MenuItem(
               key: kMenuSubItemKeyJoinQQGroup,
               title: 'tray_context_menu.item_discussion_subitem_qq_group'.tr(),
-            ),
-            MenuItem(
-              key: kMenuSubItemKeyJoinWeChatGroup,
-              title:
-                  'tray_context_menu.item_discussion_subitem_wechat_group'.tr(),
             ),
           ],
         ),
@@ -307,21 +294,24 @@ class _DesktopPopupPageState extends State<DesktopPopupPage>
   void _windowResize() {
     if (Navigator.of(context).canPop()) return;
 
-    if (_resizeTimer != null && _resizeTimer.isActive) {
-      _resizeTimer.cancel();
+    if (_resizeTimer != null && _resizeTimer!.isActive) {
+      _resizeTimer?.cancel();
     }
     _resizeTimer = Timer.periodic(const Duration(milliseconds: 10), (_) async {
       if (!kIsMacOS) {
         await Future.delayed(const Duration(milliseconds: 100));
       }
-      RenderBox rb1 = _bannersViewKey?.currentContext?.findRenderObject();
-      RenderBox rb2 = _inputViewKey?.currentContext?.findRenderObject();
-      RenderBox rb3 = _resultsViewKey?.currentContext?.findRenderObject();
+      RenderBox? rb1 =
+          _bannersViewKey.currentContext?.findRenderObject() as RenderBox?;
+      RenderBox? rb2 =
+          _inputViewKey.currentContext?.findRenderObject() as RenderBox?;
+      RenderBox? rb3 =
+          _resultsViewKey.currentContext?.findRenderObject() as RenderBox?;
 
       double toolbarViewHeight = 36.0;
-      double bannersViewHeight = rb1?.size?.height ?? 0;
-      double inputViewHeight = rb2?.size?.height ?? 0;
-      double resultsViewHeight = rb3?.size?.height ?? 0;
+      double bannersViewHeight = rb1?.size.height ?? 0;
+      double inputViewHeight = rb2?.size.height ?? 0;
+      double resultsViewHeight = rb3?.size.height ?? 0;
 
       try {
         double newWindowHeight = toolbarViewHeight +
@@ -345,29 +335,13 @@ class _DesktopPopupPageState extends State<DesktopPopupPage>
       }
 
       if (_resizeTimer != null) {
-        _resizeTimer.cancel();
+        _resizeTimer?.cancel();
         _resizeTimer = null;
       }
     });
   }
 
-  void _loadData() async {
-    try {
-      _latestVersion = await proAccount.version('latest').get();
-      setState(() {});
-    } catch (error) {}
-    try {
-      ProAccountInterceptor.appBuildNumber = '${sharedEnv.appBuildNumber}';
-      ProAccountInterceptor.appVersion = sharedEnv.appVersion;
-
-      if (proAccount.loggedInGuest == null) {
-        await proAccount.loginAsGuest();
-      }
-      await sharedLocalDb.loadFromProAccount();
-    } catch (error) {}
-  }
-
-  void _queryData() async {
+  Future<void> _queryData() async {
     setState(() {
       _isShowSourceLanguageSelector = false;
       _isShowTargetLanguageSelector = false;
@@ -395,7 +369,7 @@ class _DesktopPopupPageState extends State<DesktopPopupPage>
                 .detectLanguage(detectLanguageRequest);
 
         _textDetectedLanguage = detectLanguageResponse
-            .detections.first.detectedLanguage
+            .detections!.first.detectedLanguage
             .split('-')[0];
 
         filteredTranslationTargetList = _translationTargetList
@@ -418,7 +392,7 @@ class _DesktopPopupPageState extends State<DesktopPopupPage>
     }
 
     for (int i = 0; i < _translationResultList.length; i++) {
-      TranslationTarget translationTarget =
+      TranslationTarget? translationTarget =
           _translationResultList[i].translationTarget;
 
       List<String> engineIdList = [];
@@ -435,12 +409,11 @@ class _DesktopPopupPageState extends State<DesktopPopupPage>
               .use(identifier)
               .getSupportedLanguagePairs();
 
-          LanguagePair languagePair = supportedLanguagePairList.firstWhere(
+          LanguagePair? languagePair = supportedLanguagePairList.firstWhere(
             (e) {
-              return e.sourceLanguage == translationTarget.sourceLanguage &&
-                  e.targetLanguage == translationTarget.targetLanguage;
+              return e.sourceLanguage == translationTarget?.sourceLanguage &&
+                  e.targetLanguage == translationTarget?.targetLanguage;
             },
-            orElse: () => null,
           );
           if (languagePair == null) {
             unsupportedEngineIdList.add(identifier);
@@ -460,24 +433,24 @@ class _DesktopPopupPageState extends State<DesktopPopupPage>
 
         TranslationResultRecord translationResultRecord =
             TranslationResultRecord(
-          id: Uuid().v4(),
+          id: const Uuid().v4(),
           translationEngineId: identifier,
-          translationTargetId: translationTarget.id,
+          translationTargetId: translationTarget?.id,
         );
         _translationResultList[i]
-            .translationResultRecordList
+            .translationResultRecordList!
             .add(translationResultRecord);
 
         Future<bool> future = Future<bool>.sync(() async {
-          LookUpRequest lookUpRequest;
-          LookUpResponse lookUpResponse;
-          UniTranslateClientError lookUpError;
-          if ((sharedTranslateClient.use(identifier).supportedScopes ?? [])
+          LookUpRequest? lookUpRequest;
+          LookUpResponse? lookUpResponse;
+          UniTranslateClientError? lookUpError;
+          if ((sharedTranslateClient.use(identifier).supportedScopes)
               .contains(kScopeLookUp)) {
             try {
               lookUpRequest = LookUpRequest(
-                sourceLanguage: translationTarget.sourceLanguage,
-                targetLanguage: translationTarget.targetLanguage,
+                sourceLanguage: translationTarget!.sourceLanguage!,
+                targetLanguage: translationTarget.targetLanguage!,
                 word: _text,
               );
               lookUpResponse = await sharedTranslateClient
@@ -490,16 +463,14 @@ class _DesktopPopupPageState extends State<DesktopPopupPage>
             }
           }
 
-          TranslateRequest translateRequest;
-          TranslateResponse translateResponse;
-          UniTranslateClientError translateError;
-          if (sharedTranslateClient
-              .use(identifier)
-              .supportedScopes
+          TranslateRequest? translateRequest;
+          TranslateResponse? translateResponse;
+          UniTranslateClientError? translateError;
+          if ((sharedTranslateClient.use(identifier).supportedScopes)
               .contains(kScopeTranslate)) {
             try {
               translateRequest = TranslateRequest(
-                sourceLanguage: translationTarget.sourceLanguage,
+                sourceLanguage: translationTarget!.sourceLanguage,
                 targetLanguage: translationTarget.targetLanguage,
                 text: _text,
               );
@@ -515,29 +486,29 @@ class _DesktopPopupPageState extends State<DesktopPopupPage>
 
           if (lookUpResponse != null) {
             _translationResultList[i]
-                .translationResultRecordList[j]
+                .translationResultRecordList![j]
                 .lookUpRequest = lookUpRequest;
             _translationResultList[i]
-                .translationResultRecordList[j]
+                .translationResultRecordList![j]
                 .lookUpResponse = lookUpResponse;
           }
           if (lookUpError != null) {
             _translationResultList[i]
-                .translationResultRecordList[j]
+                .translationResultRecordList![j]
                 .lookUpError = lookUpError;
           }
 
           if (translateResponse != null) {
             _translationResultList[i]
-                .translationResultRecordList[j]
+                .translationResultRecordList![j]
                 .translateRequest = translateRequest;
             _translationResultList[i]
-                .translationResultRecordList[j]
+                .translationResultRecordList![j]
                 .translateResponse = translateResponse;
           }
           if (translateError != null) {
             _translationResultList[i]
-                .translationResultRecordList[j]
+                .translationResultRecordList![j]
                 .translateError = translateError;
           }
 
@@ -553,7 +524,7 @@ class _DesktopPopupPageState extends State<DesktopPopupPage>
   }
 
   void _handleTextChanged(
-    String newValue, {
+    String? newValue, {
     bool isRequery = false,
   }) {
     setState(() {
@@ -601,7 +572,7 @@ class _DesktopPopupPageState extends State<DesktopPopupPage>
 
     await _windowHide();
 
-    String imagePath;
+    String? imagePath;
     if (!kIsWeb) {
       Directory appDir = await sharedConfig.getAppDirectory();
       String fileName =
@@ -626,20 +597,20 @@ class _DesktopPopupPageState extends State<DesktopPopupPage>
         _isTextDetecting = true;
         setState(() {});
         await Future.delayed(const Duration(milliseconds: 60));
-        DetectTextResponse detectTextResponse = await sharedOcrClient
+        RecognizeTextResponse recognizeTextResponse = await sharedOcrClient
             .use(sharedConfig.defaultOcrEngineId)
-            .detectText(
-              DetectTextRequest(
-                imagePath: _capturedData.imagePath,
-                base64Image: _capturedData.base64Image,
+            .recognizeText(
+              RecognizeTextRequest(
+                imagePath: _capturedData?.imagePath,
+                base64Image: _capturedData?.base64Image,
               ),
             );
         _isTextDetecting = false;
         setState(() {});
         if (sharedConfig.autoCopyDetectedText) {
-          Clipboard.setData(ClipboardData(text: detectTextResponse.text));
+          Clipboard.setData(ClipboardData(text: recognizeTextResponse.text));
         }
-        _handleTextChanged(detectTextResponse.text, isRequery: true);
+        _handleTextChanged(recognizeTextResponse.text, isRequery: true);
       } catch (error) {
         _isTextDetecting = false;
         setState(() {});
@@ -677,7 +648,7 @@ class _DesktopPopupPageState extends State<DesktopPopupPage>
     _focusNode.requestFocus();
   }
 
-  void _handleButtonTappedTrans() {
+  void _handleButtonTappedTrans() async {
     if (_text.isEmpty) {
       BotToast.showText(
         text: 'page_home.msg_please_enter_word_or_text'.tr(),
@@ -686,13 +657,10 @@ class _DesktopPopupPageState extends State<DesktopPopupPage>
       _focusNode.requestFocus();
       return;
     }
-    _queryData();
+    await _queryData();
   }
 
   Widget _buildBannersView(BuildContext context) {
-    bool isFoundNewVersion = _latestVersion != null &&
-        _latestVersion.buildNumber > sharedEnv.appBuildNumber;
-
     bool isNoAllowedAllAccess =
         !(_isAllowedScreenCaptureAccess && _isAllowedScreenSelectionAccess);
 
@@ -700,15 +668,11 @@ class _DesktopPopupPageState extends State<DesktopPopupPage>
       key: _bannersViewKey,
       width: double.infinity,
       margin: EdgeInsets.only(
-        bottom: (isFoundNewVersion || isNoAllowedAllAccess) ? 12 : 0,
+        bottom: (isNoAllowedAllAccess) ? 12 : 0,
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (isFoundNewVersion)
-            NewVersionFoundBanner(
-              latestVersion: _latestVersion,
-            ),
           if (isNoAllowedAllAccess)
             LimitedFunctionalityBanner(
               isAllowedScreenCaptureAccess: _isAllowedScreenCaptureAccess,
@@ -743,7 +707,7 @@ class _DesktopPopupPageState extends State<DesktopPopupPage>
   }
 
   Widget _buildInputView(BuildContext context) {
-    return Container(
+    return SizedBox(
       key: _inputViewKey,
       width: double.infinity,
       child: Column(
@@ -752,7 +716,7 @@ class _DesktopPopupPageState extends State<DesktopPopupPage>
           TranslationInputView(
             focusNode: _focusNode,
             controller: _textEditingController,
-            onChanged: (newValue) => this._handleTextChanged(newValue),
+            onChanged: (newValue) => _handleTextChanged(newValue),
             capturedData: _capturedData,
             isTextDetecting: _isTextDetecting,
             translationMode: _config.translationMode,
@@ -762,11 +726,10 @@ class _DesktopPopupPageState extends State<DesktopPopupPage>
             },
             inputSetting: _config.inputSetting,
             onClickExtractTextFromScreenCapture:
-                this._handleExtractTextFromScreenCapture,
-            onClickExtractTextFromClipboard:
-                this._handleExtractTextFromClipboard,
-            onButtonTappedClear: this._handleButtonTappedClear,
-            onButtonTappedTrans: this._handleButtonTappedTrans,
+                _handleExtractTextFromScreenCapture,
+            onClickExtractTextFromClipboard: _handleExtractTextFromClipboard,
+            onButtonTappedClear: _handleButtonTappedClear,
+            onButtonTappedTrans: _handleButtonTappedTrans,
           ),
           TranslationTargetSelectView(
             translationMode: _config.translationMode,
@@ -832,14 +795,14 @@ class _DesktopPopupPageState extends State<DesktopPopupPage>
     );
   }
 
-  Widget _buildAppBar(BuildContext context) {
+  PreferredSizeWidget _buildAppBar(BuildContext context) {
     return PreferredSize(
       child: Container(
         padding: const EdgeInsets.only(left: 8, right: 8, top: 0),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            ToolbarItemAlwaysOnTop(),
+            const ToolbarItemAlwaysOnTop(),
             Expanded(child: Container()),
             ToolbarItemSettings(
               onSettingsPageDismiss: () {
@@ -855,11 +818,26 @@ class _DesktopPopupPageState extends State<DesktopPopupPage>
 
   @override
   Widget build(BuildContext context) {
-    WidgetsBinding.instance.addPostFrameCallback((_) => _windowResize());
+    WidgetsBinding.instance?.addPostFrameCallback((_) => _windowResize());
     return Scaffold(
       appBar: _buildAppBar(context),
       body: _buildBody(context),
     );
+  }
+
+  @override
+  void onProtocolUrlReceived(String url) async {
+    Uri uri = Uri.parse(url);
+    if (uri.scheme != 'biyiapp') return;
+
+    if (uri.authority == 'translate') {
+      if (_text.isNotEmpty) _handleButtonTappedClear();
+      String? text = uri.queryParameters['text'];
+      if (text != null && text.isNotEmpty) {
+        _handleTextChanged(text, isRequery: true);
+      }
+    }
+    await _windowShow();
   }
 
   @override
@@ -901,21 +879,6 @@ class _DesktopPopupPageState extends State<DesktopPopupPage>
   }
 
   @override
-  void onUriSchemeLaunch(Uri uri) async {
-    if (uri.scheme != 'biyiapp') return;
-
-    await _windowShow();
-    await Future.delayed(const Duration(milliseconds: 200));
-    if (uri.authority == 'translate') {
-      if (_text.isNotEmpty) _handleButtonTappedClear();
-      String text = uri.queryParameters['text'];
-      if (text != null && text.isNotEmpty) {
-        _handleTextChanged(text, isRequery: true);
-      }
-    }
-  }
-
-  @override
   void onTrayIconMouseDown() async {
     _windowShow(isShowBelowTray: true);
   }
@@ -931,17 +894,11 @@ class _DesktopPopupPageState extends State<DesktopPopupPage>
       case kMenuItemKeyQuickStartGuide:
         await launch('${sharedEnv.webUrl}/docs');
         break;
-      case kMenuItemKeySponsor:
-        await launch('${sharedEnv.webUrl}/sponsor');
-        break;
       case kMenuSubItemKeyJoinDiscord:
         await launch('https://discord.gg/yRF62CKza8');
         break;
       case kMenuSubItemKeyJoinQQGroup:
         await launch('https://jq.qq.com/?_wv=1027&k=vYQ5jW7y');
-        break;
-      case kMenuSubItemKeyJoinWeChatGroup:
-        await launch('${sharedEnv.webUrl}/discussion/wechat-group');
         break;
       case kMenuItemKeyQuitApp:
         await trayManager.destroy();

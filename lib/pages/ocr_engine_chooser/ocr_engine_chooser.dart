@@ -3,11 +3,11 @@ import 'package:flutter/material.dart';
 import '../../../includes.dart';
 
 class OcrEngineChooserPage extends StatefulWidget {
-  final OcrEngineConfig initialOcrEngineConfig;
-  final ValueChanged<OcrEngineConfig> onChoosed;
+  final OcrEngineConfig? initialOcrEngineConfig;
+  final ValueChanged<OcrEngineConfig>? onChoosed;
 
   const OcrEngineChooserPage({
-    Key key,
+    Key? key,
     this.initialOcrEngineConfig,
     this.onChoosed,
   }) : super(key: key);
@@ -17,9 +17,9 @@ class OcrEngineChooserPage extends StatefulWidget {
 }
 
 class _OcrEngineChooserPageState extends State<OcrEngineChooserPage> {
-  String _identifier;
+  String? _identifier;
 
-  String t(String key, {List<String> args}) {
+  String t(String key, {List<String> args = const []}) {
     return 'page_ocr_engine_chooser.$key'.tr(args: args);
   }
 
@@ -33,9 +33,9 @@ class _OcrEngineChooserPageState extends State<OcrEngineChooserPage> {
 
   void _handleClickOk() async {
     if (widget.onChoosed != null) {
-      OcrEngineConfig ocrEngineConfig =
+      OcrEngineConfig? ocrEngineConfig =
           sharedLocalDb.ocrEngine(_identifier).get();
-      widget.onChoosed(ocrEngineConfig);
+      widget.onChoosed!(ocrEngineConfig!);
     }
 
     Navigator.of(context).pop();
@@ -43,55 +43,21 @@ class _OcrEngineChooserPageState extends State<OcrEngineChooserPage> {
 
   Widget _buildBody(BuildContext context) {
     return LocalDbBuilder(builder: (context, dbData) {
-      final proOcrEngineList =
-          (dbData.proOcrEngineList ?? []).where((e) => !e.disabled).toList();
       final privateOcrEngineList = (dbData.privateOcrEngineList ?? [])
           .where((e) => !e.disabled)
           .toList();
       return PreferenceList(
         children: [
-          if (proOcrEngineList.isNotEmpty)
-            PreferenceListSection(
-              children: [
-                for (var ocrEngineConfig in proOcrEngineList)
-                  PreferenceListRadioItem(
-                    icon: OcrEngineIcon(
-                      ocrEngineConfig,
-                    ),
-                    value: ocrEngineConfig.identifier,
-                    groupValue: _identifier,
-                    onChanged: (newValue) {
-                      setState(() {
-                        _identifier = newValue;
-                      });
-                    },
-                    title: Builder(builder: (_) {
-                      return Text.rich(
-                        TextSpan(
-                          text: ocrEngineConfig.typeName,
-                          children: [
-                            TextSpan(
-                              text: ' (${ocrEngineConfig.shortId})',
-                              style:
-                                  TextStyle(fontSize: 12, color: Colors.grey),
-                            )
-                          ],
-                        ),
-                      );
-                    }),
-                  ),
-              ],
-            ),
           PreferenceListSection(
             title: Text(t('pref_section_title_private')),
             children: [
               for (var ocrEngineConfig in privateOcrEngineList)
-                PreferenceListRadioItem(
+                PreferenceListRadioItem<String>(
                   icon: OcrEngineIcon(
                     ocrEngineConfig,
                   ),
                   value: ocrEngineConfig.identifier,
-                  groupValue: _identifier,
+                  groupValue: _identifier ?? '',
                   onChanged: (newValue) {
                     setState(() {
                       _identifier = newValue;

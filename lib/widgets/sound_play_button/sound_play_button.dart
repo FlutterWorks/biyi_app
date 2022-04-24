@@ -11,7 +11,10 @@ const _kIconSize = 16.0;
 class SoundPlayButton extends StatefulWidget {
   final String audioUrl;
 
-  const SoundPlayButton({Key key, this.audioUrl}) : super(key: key);
+  const SoundPlayButton({
+    Key? key,
+    required this.audioUrl,
+  }) : super(key: key);
 
   @override
   _SoundPlayButtonState createState() => _SoundPlayButtonState();
@@ -21,7 +24,7 @@ class _SoundPlayButtonState extends State<SoundPlayButton>
     with AudioPlayerListener {
   bool _playing = false;
   int _playingAnimImageIndex = 0;
-  Timer _playingAnimTimer;
+  Timer? _playingAnimTimer;
 
   @override
   void initState() {
@@ -54,25 +57,24 @@ class _SoundPlayButtonState extends State<SoundPlayButton>
   }
 
   void _stopPlayingAnimTimer() {
-    if (_playingAnimTimer != null && _playingAnimTimer.isActive) {
-      _playingAnimTimer.cancel();
+    if (_playingAnimTimer != null && _playingAnimTimer!.isActive) {
+      _playingAnimTimer?.cancel();
     }
     _playingAnimTimer = null;
     _playingAnimImageIndex = 0;
-
-    if (mounted) setState(() {});
   }
 
-  void _handleClickPlay() {
+  void _handleClickPlay() async {
     AudioPlayer.instance.setSource(Uri.parse(widget.audioUrl));
-    AudioPlayer.instance.prepare();
-    AudioPlayer.instance.start();
+    await AudioPlayer.instance.prepare();
+    await AudioPlayer.instance.start();
     _startPlayingAnimTimer();
   }
 
-  void _handleClickStop() {
-    AudioPlayer.instance.stop();
+  void _handleClickStop() async {
+    await AudioPlayer.instance.stop();
     _stopPlayingAnimTimer();
+    if (mounted) setState(() {});
   }
 
   @override
@@ -93,7 +95,7 @@ class _SoundPlayButtonState extends State<SoundPlayButton>
                 child: Icon(
                   FluentIcons.speaker_2_20_regular,
                   size: _kIconSize,
-                  color: Theme.of(context).textTheme.caption.color,
+                  color: Theme.of(context).textTheme.caption!.color,
                 ),
               ),
               SizedBox(
@@ -102,7 +104,7 @@ class _SoundPlayButtonState extends State<SoundPlayButton>
                 child: Icon(
                   FluentIcons.speaker_1_20_regular,
                   size: _kIconSize,
-                  color: Theme.of(context).textTheme.caption.color,
+                  color: Theme.of(context).textTheme.caption!.color,
                 ),
               ),
               SizedBox(
@@ -111,7 +113,7 @@ class _SoundPlayButtonState extends State<SoundPlayButton>
                 child: Icon(
                   FluentIcons.speaker_0_20_regular,
                   size: _kIconSize,
-                  color: Theme.of(context).textTheme.caption.color,
+                  color: Theme.of(context).textTheme.caption!.color,
                 ),
               ),
             ],
