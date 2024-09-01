@@ -1,7 +1,7 @@
+import 'dart:ui' as ui;
+
 import 'package:biyi_app/generated/locale_keys.g.dart';
 import 'package:biyi_app/models/models.dart';
-import 'package:biyi_app/pages/pages.dart';
-import 'package:biyi_app/services/services.dart';
 import 'package:biyi_app/widgets/translation_result_record_view/translation_engine_tag.dart';
 import 'package:biyi_app/widgets/translation_result_record_view/word_image_view.dart';
 import 'package:biyi_app/widgets/translation_result_record_view/word_pronunciation_view.dart';
@@ -11,25 +11,25 @@ import 'package:biyi_app/widgets/widgets.dart';
 import 'package:bot_toast/bot_toast.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/gestures.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
-import 'package:page_transition/page_transition.dart';
+import 'package:reflect_colors/reflect_colors.dart';
+import 'package:reflect_ui/reflect_ui.dart';
 import 'package:uni_translate_client/uni_translate_client.dart';
 
 class TranslationResultRecordView extends StatelessWidget {
   const TranslationResultRecordView({
-    Key? key,
+    super.key,
     required this.translationResult,
     required this.translationResultRecord,
     required this.onTextTapped,
-  }) : super(key: key);
+    required this.doubleClickCopyResult,
+  });
 
   final TranslationResult translationResult;
   final TranslationResultRecord translationResultRecord;
   final ValueChanged<String> onTextTapped;
-
-  Configuration get _configuration => localDb.configuration;
+  final bool doubleClickCopyResult;
 
   bool get _isLoading {
     if (_isErrorOccurred) return false;
@@ -40,9 +40,11 @@ class TranslationResultRecordView extends StatelessWidget {
   bool get _isGenerating {
     if (_isErrorOccurred) return false;
     final record = translationResultRecord;
-    return record.lookUpResponse?.generating ??
-        record.translateResponse?.generating ??
-        false;
+    if (record.translateResponse != null &&
+        record.translateResponse is StreamTranslateResponse) {
+      return (record.translateResponse as StreamTranslateResponse).generating;
+    }
+    return false;
   }
 
   bool get _isErrorOccurred {
@@ -51,6 +53,7 @@ class TranslationResultRecordView extends StatelessWidget {
   }
 
   Widget _buildRequestLoading(BuildContext context) {
+    IconThemeData iconThemeData = Theme.of(context).iconTheme;
     return Container(
       constraints: const BoxConstraints(
         minHeight: 40,
@@ -64,7 +67,7 @@ class TranslationResultRecordView extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           SpinKitThreeBounce(
-            color: Theme.of(context).textTheme.bodySmall!.color,
+            color: iconThemeData.color,
             size: 12.0,
           ),
         ],
@@ -92,7 +95,8 @@ class TranslationResultRecordView extends StatelessWidget {
       alignment: Alignment.centerLeft,
       child: SelectableText(
         error.message,
-        style: const TextStyle(color: Colors.red),
+        style: const TextStyle(color: ReflectColors.red),
+        selectionHeightStyle: ui.BoxHeightStyle.max,
       ),
     );
   }
@@ -136,7 +140,7 @@ class TranslationResultRecordView extends StatelessWidget {
       return GestureDetector(
         behavior: HitTestBehavior.opaque,
         onDoubleTap: () {
-          if (_configuration.doubleClickCopyResult) {
+          if (doubleClickCopyResult) {
             Clipboard.setData(ClipboardData(text: textTranslation.text));
             BotToast.showText(
               text: LocaleKeys.copied.tr(),
@@ -160,7 +164,7 @@ class TranslationResultRecordView extends StatelessWidget {
               children: [
                 TextSpan(text: textTranslation.text),
                 if (_isGenerating)
-                  WidgetSpan(
+                  const WidgetSpan(
                     child: GeneratingCursor(),
                     alignment: PlaceholderAlignment.middle,
                   ),
@@ -169,6 +173,7 @@ class TranslationResultRecordView extends StatelessWidget {
             style: textTheme.bodyMedium!.copyWith(
               height: 1.4,
             ),
+            selectionHeightStyle: ui.BoxHeightStyle.max,
           ),
         ),
       );
@@ -190,7 +195,7 @@ class TranslationResultRecordView extends StatelessWidget {
           if ((translations ?? []).isNotEmpty)
             WordTranslationView(translations!.first),
           // 包含查词结果时显示分割线
-          if ((translations ?? []).isNotEmpty) const Divider(height: 0),
+          if ((translations ?? []).isNotEmpty) const Divider(),
           // 音标
           if ((pronunciations ?? []).isNotEmpty)
             Container(
@@ -201,7 +206,7 @@ class TranslationResultRecordView extends StatelessWidget {
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: <Widget>[
                   for (WordPronunciation wordPronunciation in pronunciations!)
-                    WordPronunciationView(wordPronunciation)
+                    WordPronunciationView(wordPronunciation),
                 ],
               ),
             ),
@@ -223,7 +228,8 @@ class TranslationResultRecordView extends StatelessWidget {
                           if ((definitions[i].name ?? '').isNotEmpty)
                             const TextSpan(text: ' '),
                           TextSpan(
-                              text: (definitions[i].values ?? []).join('；')),
+                            text: (definitions[i].values ?? []).join('；'),
+                          ),
                           if (i < definitions.length - 1)
                             const TextSpan(text: '\n'),
                         ],
@@ -233,6 +239,7 @@ class TranslationResultRecordView extends StatelessWidget {
                 style: textTheme.bodyMedium!.copyWith(
                   height: 1.5,
                 ),
+                selectionHeightStyle: ui.BoxHeightStyle.max,
               ),
             ),
           // 时态
@@ -268,6 +275,7 @@ class TranslationResultRecordView extends StatelessWidget {
                 style: textTheme.bodyMedium!.copyWith(
                   height: 1.5,
                 ),
+                selectionHeightStyle: ui.BoxHeightStyle.max,
               ),
             ),
           // 图片
@@ -282,18 +290,7 @@ class TranslationResultRecordView extends StatelessWidget {
                   for (var i = 0; i < images!.length; i++)
                     WordImageView(
                       images[i],
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          PageTransition(
-                            type: PageTransitionType.fade,
-                            child: ImageViewerPage(
-                              images!.map((e) => e.url).toList(),
-                              initialIndex: i,
-                            ),
-                          ),
-                        );
-                      },
+                      onPressed: () {},
                     ),
                 ],
               ),
@@ -386,27 +383,15 @@ class TranslationResultRecordView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
+    return Card(
       margin: const EdgeInsets.only(
         left: 12,
         right: 12,
         top: 0,
         bottom: 12,
       ),
-      child: Container(
+      child: SizedBox(
         width: double.infinity,
-        decoration: BoxDecoration(
-          color: Theme.of(context).canvasColor,
-          borderRadius: BorderRadius.circular(2),
-          boxShadow: <BoxShadow>[
-            BoxShadow(
-              color: Colors.black.withOpacity(0.04),
-              offset: const Offset(0.0, 1.0),
-              blurRadius: 3.0,
-            ),
-          ],
-        ),
         child: Stack(
           children: [
             if (_isLoading)

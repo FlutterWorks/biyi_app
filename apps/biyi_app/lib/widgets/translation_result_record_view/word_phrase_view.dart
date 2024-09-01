@@ -1,13 +1,15 @@
-import 'package:biyi_app/includes.dart';
+import 'dart:ui' as ui;
+
 import 'package:flutter/gestures.dart';
-import 'package:flutter/material.dart';
+import 'package:reflect_ui/reflect_ui.dart';
+import 'package:uni_translate_client/uni_translate_client.dart';
 
 class WordPhraseView extends StatelessWidget {
   const WordPhraseView(
     this.wordPhrase, {
-    Key? key,
+    super.key,
     required this.onTextTapped,
-  }) : super(key: key);
+  });
 
   final WordPhrase wordPhrase;
   final ValueChanged<String> onTextTapped;
@@ -47,6 +49,7 @@ class WordPhraseView extends StatelessWidget {
             style: textTheme.bodyMedium!.copyWith(
               height: 1.4,
             ),
+            selectionHeightStyle: ui.BoxHeightStyle.max,
           ),
         ],
       ),

@@ -1,8 +1,9 @@
-import 'package:biyi_app/includes.dart';
+import 'package:biyi_app/models/translation_target.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:shortid/shortid.dart';
 
+@Deprecated('No longer used.')
 class TranslationTargetsModifier extends Listenable {
   Box? _boxInstance;
 
@@ -30,7 +31,9 @@ class TranslationTargetsModifier extends Listenable {
   }
 
   List<TranslationTarget> list() {
-    return _box.values.map((e) => TranslationTarget.fromJson(e)).toList();
+    return _box.values
+        .map((e) => TranslationTarget.fromJson(Map<String, dynamic>.from(e)))
+        .toList();
   }
 
   TranslationTarget? get() {

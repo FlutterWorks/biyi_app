@@ -1,14 +1,15 @@
-import 'package:biyi_app/includes.dart';
-import 'package:flutter/material.dart';
+import 'package:biyi_app/utils/language_util.dart';
+import 'package:biyi_app/widgets/language_flag_view/language_flag_view.dart';
+import 'package:reflect_ui/reflect_ui.dart';
 
 class LanguageLabel extends StatelessWidget {
   const LanguageLabel(
     this.language, {
-    Key? key,
+    super.key,
     this.flagSize = 22,
     this.flagBorderColor,
     this.style,
-  }) : super(key: key);
+  });
 
   final String language;
   final double flagSize;
@@ -18,7 +19,8 @@ class LanguageLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     TextTheme textTheme = Theme.of(context).textTheme;
-    return Row(
+    return GappedRow(
+      gap: 5,
       mainAxisSize: MainAxisSize.min,
       children: [
         LanguageFlagView(
@@ -26,7 +28,6 @@ class LanguageLabel extends StatelessWidget {
           size: flagSize,
           borderColor: flagBorderColor,
         ),
-        const SizedBox(width: 5),
         DefaultTextStyle(
           style: textTheme.bodyMedium!,
           child: Text(
